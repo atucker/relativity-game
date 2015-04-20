@@ -86,12 +86,13 @@ var asteroid = {
 
 	this.circle.rotation = ((Math.atan(ship.Vx / -ship.Vy) * 180 / Math.PI)) + 90;
 
-	this.ore -= this.ore * .001 / gamma; 
+	this.ore -= this.ore * .0085 / gamma; 
 
 	this.circle.filters[0].blueMultiplier = (500.0-this.ore) / 500.0;
 	this.circle.filters[0].redMultiplier = (500.0-this.ore) / 500.0;
-	//this.cache(this.x, this.y, 20, 20);
-	//this.updateCache();
+	//this.circle.filters[0].greenOffset = this.ore / 2;
+	
+	this.circle.updateCache();
 
 	/*if (ndgmr.checkPixelCollision(this,ship,0,true)) {
 	    alert("hit!");
@@ -159,11 +160,15 @@ function init() {
     ship.circle.graphics.beginFill("DeepSkyBlue").drawCircle(0, 0, 30);
     stage.addChild(ship.circle);
 
+    //asteroid.circle = new createjs.Bitmap("asteroid.jpg");
     asteroid.circle = new createjs.Shape();
-    asteroid.circle.graphics.beginFill("Brown").drawCircle(0, 0, 20);
+    asteroid.circle.graphics.beginFill("#996600").drawCircle(0, 0, 20);
     asteroid.circle.filters = [
-	new createjs.ColorFilter(1,1,1,1, 0,0,0,0)
+	new createjs.ColorFilter(.1,.5,.1,1, 0,0,0,0)
     ];
+    asteroid.circle.cache(-20, -20, 100, 100);
+    //asteroid.circle.regX = 20;
+    //asteroid.circle.regY = 20;
     stage.addChild(asteroid.circle);
 
     /*createjs.Ticker.addListener(window);
