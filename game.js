@@ -17,10 +17,47 @@ var key_map = {
     37: "-x"
 };
 
+var gamma = 1.0;
+var c = 20.0;
+
+function contract(x, y) {
+	// we need to use the ship's frame
+	var xp = x - ship.x;
+	var yp = y - ship.y;
+
+	var Bx = ship.Vx / c;
+	var By = ship.Vy / c;
+	var B = Math.sqrt(Bx * Bx + By * By);
+
+	var a11 = 1 + ((gamma - 1) * Bx * Bx / (B * B));
+	var ad =      ((gamma - 1) * Bx * By / (B * B));
+	var a22 = 1 + ((gamma - 1) * By * By / (B * B));
+
+	var r = (x * By + y * Bx) / (B * c);
+        if(B < .001) {
+		a11 = 1;
+		a22 = 1;
+		ad = 0;
+
+		r = 0;
+	}
+
+	//var reg = 1;// / (a11 * a22 - ad * ad);
+	var coords = {
+		x:  (-gamma * Bx * c + a11 * xp +  ad * yp) + ship.x,// - (1-gamma) * r / ship.Vx,//
+		y:  (-gamma * By * c +  ad * xp + a22 * yp) + ship.y// - (1-gamma) * r / ship.Vy//// + ship.x,//(-gamma * c * By +  ad * xp + a22 * yp)// + ship.y
+	};
+
+	
+	//$("#debug").html(Bx + ", " + By + ": " + B +  "<br />" + a11 + "," + ad + "<br />" + ad + "," + a22 + "<br/>" + "(" + xp + ", " + yp + ") --(" + gamma + ")-> (" + coords.x + ", " + coords.y + ")");
+
+	return coords;
+}
+
 var ship = {
     circle: null,
-    x: 350,
-    y: 350,
+    x: 350.0,
+    y: 350.0,
     Vx: 0,
     Vy: 0,
     ax: 0,
@@ -40,19 +77,28 @@ var ship = {
 	if(io["+y"]) {this.ay = -1;}
 	if(io["-y"]) {this.ay = 1;}
 
-	this.Vx += this.ax;
-	this.Vy += this.ay;
+	gamma = 1 / Math.sqrt(1 -
+			      (
+				      (Math.pow(this.Vx, 2) +
+				       Math.pow(this.Vy, 2)) / (c * c)
+			      )
+			     );
+	this.Vx += this.ax / gamma;
+	this.Vy += this.ay / gamma;
+	    
+
+	var V = Math.sqrt(this.Vx ^ 2 + this.Vy ^ 2);
+	if(V > c * .95) {
+		this.Vx = c * .95 * (V / this.Vx);
+		this.Vy = c * .95 * (V / this.Vy);
+	}
+
+	$("#debug").html(this.Vx);
 
 	this.x += this.Vx;
 	this.y += this.Vy;
-	
-	var gamma = Math.sqrt(
-	    Math.max(
-		1 - (Math.pow(this.Vx, 2) + Math.pow(this.Vy, 2))/400, 
-	        .05
-	    )
-	);
 
+	//var coords = contract(this.x, this.y);
 	this.circle.x = this.x;
 	this.circle.y = this.y;
 
@@ -61,27 +107,23 @@ var ship = {
 
 	this.circle.rotation = Math.atan(this.Vx / this.Vy) * 180 / Math.PI;*/
 	//this.circle.transformMatrix = createjs.Matrix2D(a=2, d=2);
-	$("#debug").html(io["+y"] + " " + true + " " + this.Vy + " " + this.y + " " + gamma);
+	//$("#debug").html(io["+y"] + " " + true + " " + this.Vy + " " + this.y + " " + gamma);
     }   
 };
 
-var asteroid = {
-    x: 150,
-    y: 100,
+var asteroid1 = {
+    x: 1000.0,
+    y: 300.0,
     ore: 500,
     circle: null,
     update: function () {
-	var gamma = Math.sqrt(
-	    Math.max(
-		1 - (Math.pow(ship.Vx, 2) + Math.pow(ship.Vy, 2))/400, 
-	        .05
-	    )
-	);
 
-	this.circle.x = this.x;
-	this.circle.y = this.y;
+	var coords = contract(this.x, this.y);
 
-	this.circle.scaleX = gamma;
+	//this.circle.x = coords.x;
+	//this.circle.y = coords.y;
+
+	this.circle.scaleX = 1/gamma;
 	this.circle.scaleY = 1;
 
 	this.circle.rotation = ((Math.atan(ship.Vx / -ship.Vy) * 180 / Math.PI)) + 90;
@@ -98,9 +140,45 @@ var asteroid = {
 	    alert("hit!");
 	}*/
 
-	if(Math.pow(this.x - ship.x, 2) + Math.pow(this.y - ship.y, 2) < 1300) {
-	    this.x = Math.random() * 680 + 10;
-	    this.y = Math.random() * 680 + 10;
+	if(Math.pow(this.circle.x - ship.x, 2) + Math.pow(this.circle.y - ship.y, 2) < 1300) {
+	    this.x = Math.random() * 300 + 200;
+	    this.y = Math.random() * 300 + 200;
+
+	    score += this.ore;
+
+	    this.ore = 500;
+	}
+    }
+};
+
+var asteroid2 = {
+    x: 500.0,
+    y: 400.0,
+    ore: 500,
+    circle: null,
+    update: function () {
+
+	var coords = contract(this.x, this.y);
+
+	this.circle.x = coords.x;
+	this.circle.y = coords.y;
+
+	this.circle.scaleX = 1/gamma;
+	this.circle.scaleY = 1;
+
+	this.circle.rotation = ((Math.atan(ship.Vx / -ship.Vy) * 180 / Math.PI)) + 90;
+
+	this.ore -= this.ore * .0085 / gamma; 
+
+	this.circle.filters[0].blueMultiplier = (500.0-this.ore) / 500.0;
+	this.circle.filters[0].redMultiplier = (500.0-this.ore) / 500.0;
+	//this.circle.filters[0].greenOffset = this.ore / 2;
+	
+	this.circle.updateCache();
+
+	if(Math.pow(this.circle.x - ship.x, 2) + Math.pow(this.circle.y - ship.y, 2) < 1300) {
+	    this.x = Math.random() * 300 + 200;
+	    this.y = Math.random() * 300 + 200;
 
 	    score += this.ore;
 
@@ -113,7 +191,10 @@ var objects = [ship];
 
 function update() {
     ship.update(io_state);
-    asteroid.update();
+    //asteroid1.update();
+    asteroid2.update();
+
+    //asteroid2.update();
     //ship.draw(); 
 
     stage.update();
@@ -161,15 +242,21 @@ function init() {
     stage.addChild(ship.circle);
 
     //asteroid.circle = new createjs.Bitmap("asteroid.jpg");
-    asteroid.circle = new createjs.Shape();
-    asteroid.circle.graphics.beginFill("#996600").drawCircle(0, 0, 20);
-    asteroid.circle.filters = [
+    /*asteroid1.circle = new createjs.Shape();
+    asteroid1.circle.graphics.beginFill("#996600").drawCircle(0, 0, 20);
+    asteroid1.circle.filters = [
 	new createjs.ColorFilter(.1,.5,.1,1, 0,0,0,0)
     ];
-    asteroid.circle.cache(-20, -20, 100, 100);
-    //asteroid.circle.regX = 20;
-    //asteroid.circle.regY = 20;
-    stage.addChild(asteroid.circle);
+    asteroid1.circle.cache(-20, -20, 100, 100);
+    stage.addChild(asteroid1.circle);*/
+
+    asteroid2.circle = new createjs.Shape();
+    asteroid2.circle.graphics.beginFill("#996600").drawCircle(0, 0, 20);
+    asteroid2.circle.filters = [
+	new createjs.ColorFilter(.1,.5,.1,1, 0,0,0,0)
+    ];
+    asteroid2.circle.cache(-20, -20, 100, 100);
+    stage.addChild(asteroid2.circle);
 
     /*createjs.Ticker.addListener(window);
     createjs.Ticker.useRAF = false;
